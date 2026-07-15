@@ -233,21 +233,21 @@ if os.path.exists(input_file):
     )
 
     fig = go.Figure()
-    fig.add_trace(go.Scattergl(
+    fig.add_trace(go.Scatter(
     x=timestamps,
     y=e_grid,
     name="E_Grid",
     line=dict(color="royalblue", width=1)
     ))
     
-    fig.add_trace(go.Scattergl(
+    fig.add_trace(go.Scatter(
         x=timestamps,
         y=modified_grid,
         name="Modified_E_Grid_v2",
         line=dict(color="orange", width=1)
     ))
     
-    fig.add_trace(go.Scattergl(
+    fig.add_trace(go.Scatter(
         x=timestamps,
         y=bp,
         name="BESS Power",
