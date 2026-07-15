@@ -99,16 +99,15 @@ if os.path.exists(input_file):
     c3.metric("Daily Cycles", "365")
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=data['TimeStamp'], y=data['Final_Grid_MW'], name="Grid Export", line=dict(color='#2ca02c', width=1)))
-    fig.add_trace(go.Scatter(x=data['TimeStamp'],y=data['SOC_%'],name="BESS SOC",yaxis="y2",line=dict(color='#00d4ff', width=1.5)))
+    fig.add_trace(go.Scattergl(x=data['TimeStamp'], y=data['Final_Grid_MW'], name="Grid Export", line=dict(color='#2ca02c', width=1)))
+    fig.add_trace(go.Scattergl(x=data['TimeStamp'],y=data['SOC_%'],name="BESS SOC",yaxis="y2",line=dict(color='#00d4ff', width=1.5)))
     
     fig.update_layout(
-        template="plotly_dark", height=600, hovermode="x unified",
+        template="plotly_dark", height=600, hovermode="closest",
         yaxis=dict(title="Power (MW)"),
         yaxis2=dict(title="SOC (%)",range=[0, 100],overlaying="y",side="right",showgrid=False),
         legend=dict(orientation="h", y=1.1)
     )
     st.plotly_chart(fig, use_container_width=True)
-    st.download_button("Download Annual Results", data.to_csv(index=False).encode('utf-8'), "bess_recovery_report.csv")
 else:
     st.error("Energy-Working.xlsx not found in directory.")
