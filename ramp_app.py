@@ -102,8 +102,8 @@ if os.path.exists(input_file):
     c3.metric("Daily Cycles", "365")
 
     fig = go.Figure()
-    fig.add_trace(go.Scattergl(x=data['TimeStamp'], y=final_grid, name="Grid Export", line=dict(color='#2ca02c', width=1)))
-    fig.add_trace(go.Scattergl(x=data['TimeStamp'],y=soc_percent,name="BESS SOC",yaxis="y2",line=dict(color='#00d4ff', width=1.5)))
+    fig.add_trace(go.Scatter(x=data['TimeStamp'], y=final_grid, name="Grid Export", line=dict(color='#2ca02c', width=1)))
+    fig.add_trace(go.Scatter(x=data['TimeStamp'],y=soc_percent,name="BESS SOC",yaxis="y2",line=dict(color='#00d4ff', width=1.5)))
     
     fig.update_layout(
         template="plotly_dark", height=600, hovermode="closest",
