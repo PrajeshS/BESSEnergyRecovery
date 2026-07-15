@@ -42,6 +42,11 @@ def run_sim_vectorized(df, cap_mwh, p_mw, eff):
     bess_p = np.zeros(n, dtype=np.float32)
     soc = np.zeros(n, dtype=np.float32)
     safe_eff = max(eff, 0.01)
+    # Discharge starts at 19:00
+    discharge_start = 19.0
+    discharge_duration = cap_mwh / p_mw if p_mw > 0 else 0
+    discharge_end = discharge_start + discharge_duration
+    discharge_end = min(discharge_end, 24.0)
     curr_soc = 0.0
     charge_limited_capacity = 0
     charge_limited_power = 0
@@ -56,7 +61,8 @@ def run_sim_vectorized(df, cap_mwh, p_mw, eff):
         # Reset at Midnight (00:00) per philosophy
         if h == 0 and m == 0: curr_soc = 0.0
         
-        is_discharge = 19 <= h < 23
+        current_hour = h + m/60
+        is_discharge = (discharge_start <= current_hour < discharge_end)
         
         if not is_discharge:
             # Charge Logic: Recover curtailed energy
