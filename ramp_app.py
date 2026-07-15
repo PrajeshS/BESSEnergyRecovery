@@ -123,7 +123,9 @@ if os.path.exists(input_file):
     days_full,
     days_empty,
 ) = run_sim_vectorized(data, cap, pwr, eff)
-    
+    timestamps = data["TimeStamp"].to_numpy()
+    e_grid = data["E_Grid (MW)"].to_numpy()
+    modified_grid = data["Modified_E_Grid_v2"].to_numpy()
     #data['BESS_MW'] = bp
     #data['SOC_MWh'] = sc
     #data['SOC_%'] = (data['SOC_MWh'] / cap) * 100 if cap > 0 else 0
@@ -232,21 +234,21 @@ if os.path.exists(input_file):
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-    x=data['TimeStamp'],
+    x=timestamps,
     y=e_grid,
     name="E_Grid",
     line=dict(color="royalblue", width=1)
     ))
     
     fig.add_trace(go.Scatter(
-        x=data['TimeStamp'],
+        x=timestamps,
         y=modified_grid,
         name="Modified_E_Grid_v2",
         line=dict(color="orange", width=1)
     ))
     
     fig.add_trace(go.Scatter(
-        x=data['TimeStamp'],
+        x=timestamps,
         y=bp,
         name="BESS Power",
         line=dict(color="#2ca02c", width=1.2)
