@@ -128,7 +128,8 @@ if os.path.exists(input_file):
     #data['SOC_MWh'] = sc
     #data['SOC_%'] = (data['SOC_MWh'] / cap) * 100 if cap > 0 else 0
     #data['Final_Grid_MW'] = data['E_Grid (MW)'] + np.where(bp > 0, bp, 0)
-    final_grid = data["E_Grid (MW)"].to_numpy() + np.where(bp > 0, bp, 0)
+    e_grid = data["E_Grid (MW)"].to_numpy()
+    modified_grid = data["Modified_E_Grid_v2"].to_numpy()
     soc_percent = (sc / cap) * 100
     
     #recovered_gwh = (data[data['BESS_MW'] > 0]['BESS_MW'].sum() / 60) / 1000
@@ -230,7 +231,26 @@ if os.path.exists(input_file):
     )
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=data['TimeStamp'], y=final_grid, name="Grid Export", line=dict(color='#2ca02c', width=1)))
+    fig.add_trace(go.Scatter(
+    x=data['TimeStamp'],
+    y=e_grid,
+    name="E_Grid",
+    line=dict(color="royalblue", width=1)
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=data['TimeStamp'],
+        y=modified_grid,
+        name="Modified_E_Grid_v2",
+        line=dict(color="orange", width=1)
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=data['TimeStamp'],
+        y=bp,
+        name="BESS Power",
+        line=dict(color="#2ca02c", width=1.2)
+    ))
     fig.add_trace(go.Scatter(x=data['TimeStamp'],y=soc_percent,name="BESS SOC",yaxis="y2",line=dict(color='#00d4ff', width=1.5)))
     
     fig.update_layout(
