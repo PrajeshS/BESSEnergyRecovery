@@ -78,7 +78,7 @@ with st.sidebar:
     st.header("⚙️ Physical & Simulation Parameters")
     pwr = st.number_input("BESS Power (MW)", 0.1, 2000.0, 20.0)
     cap = st.number_input("BESS Capacity (MWh)", 0.1, 5000.0, 40.0)
-    eff = st.slider("One-Way Efficiency", 0.70, 1.00, 0.96)
+    eff = st.number_input("One-Way Efficiency", 0.70, 1.00, 0.96)
 
 input_file = '/content/Energy-Working.xlsx' if os.path.exists('/content/Energy-Working.xlsx') else 'Energy-Working.csv'
 
