@@ -202,7 +202,7 @@ if os.path.exists(input_file):
         "Days SOC Hit 100%",
         f"{days_full_percent:.1f}%"
     )
-    c9,c10,c11,12 = st.columns(4)
+    c9,c10,c11,c12 = st.columns(4)
 
     c9.metric(
         "Days Ending Empty",
