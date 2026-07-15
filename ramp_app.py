@@ -75,9 +75,9 @@ def run_sim_vectorized(df, cap_mwh, p_mw, eff):
 st.markdown('<div class="main-header">🔋 BESS Energy Recovery: Annual Profile</div>', unsafe_allow_html=True)
 
 with st.sidebar:
-    st.header("System Parameters")
-    cap = st.number_input("BESS Capacity (MWh)", 0.1, 5000.0, 40.0)
+    st.header("⚙️ Physical & Simulation Parameters")
     pwr = st.number_input("BESS Power (MW)", 0.1, 2000.0, 20.0)
+    cap = st.number_input("BESS Capacity (MWh)", 0.1, 5000.0, 40.0)
     eff = st.slider("One-Way Efficiency", 0.70, 1.00, 0.96)
 
 input_file = '/content/Energy-Working.xlsx' if os.path.exists('/content/Energy-Working.xlsx') else 'Energy-Working.csv'
@@ -88,24 +88,24 @@ if os.path.exists(input_file):
     
     data['BESS_MW'] = bp
     data['SOC_MWh'] = sc
+    data['SOC_%'] = (data['SOC_MWh'] / cap) * 100 if cap > 0 else 0
     data['Final_Grid_MW'] = data['E_Grid (MW)'] + np.where(bp > 0, bp, 0)
     
     recovered_gwh = (data[data['BESS_MW'] > 0]['BESS_MW'].sum() / 60) / 1000
     
     c1, c2, c3 = st.columns(3)
     c1.metric("Annual Recovered", f"{recovered_gwh:.3f} GWh")
-    c2.metric("Peak SOC", f"{data['SOC_MWh'].max():.1f} MWh")
+    c2.metric("Peak SOC", f"{data['SOC_%'].max():.1f}%")
     c3.metric("Daily Cycles", "365")
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=data['TimeStamp'], y=data['E_Grid (MW)'], name="Solar (Base)", line=dict(color='rgba(200,200,200,0.2)', width=1)))
     fig.add_trace(go.Scatter(x=data['TimeStamp'], y=data['Final_Grid_MW'], name="Grid Export", line=dict(color='#2ca02c', width=1)))
-    fig.add_trace(go.Scatter(x=data['TimeStamp'], y=data['SOC_MWh'], name="BESS SOC", yaxis="y2", line=dict(color='#00d4ff', width=1.5)))
+    fig.add_trace(go.Scatter(x=data['TimeStamp'],y=data['SOC_%'],name="BESS SOC",yaxis="y2",line=dict(color='#00d4ff', width=1.5)))
     
     fig.update_layout(
         template="plotly_dark", height=600, hovermode="x unified",
         yaxis=dict(title="Power (MW)"),
-        yaxis2=dict(title="SOC (MWh)", overlaying="y", side="right", showgrid=False),
+        yaxis2=dict(title="SOC (%)",range=[0, 100],overlaying="y",side="right",showgrid=False),
         legend=dict(orientation="h", y=1.1)
     )
     st.plotly_chart(fig, use_container_width=True)
