@@ -98,7 +98,7 @@ if os.path.exists(input_file):
     
     c1, c2, c3 = st.columns(3)
     c1.metric("Annual Recovered", f"{recovered_gwh:.3f} GWh")
-    c2.metric("Peak SOC", f"{data['SOC_%'].max():.1f}%")
+    c2.metric("Peak SOC", f"{soc_percent.max():.1f}%")
     c3.metric("Daily Cycles", "365")
 
     fig = go.Figure()
