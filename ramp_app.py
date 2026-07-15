@@ -80,7 +80,7 @@ def run_sim_vectorized(df, cap_mwh, p_mw, eff):
                 bess_p[i] = -p_in
                 curr_soc += p_in * dt * safe_eff
         else:
-            # Discharge Logic: 7 PM - 11 PM
+            # Discharge Logic: starts at 7 PM, duration = Energy / Power
             avail_mwh = curr_soc * safe_eff
             p_out = min(p_mw, avail_mwh / dt)
             if p_out > 0:
