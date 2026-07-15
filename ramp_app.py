@@ -43,6 +43,11 @@ def run_sim_vectorized(df, cap_mwh, p_mw, eff):
     soc = np.zeros(n, dtype=np.float32)
     safe_eff = max(eff, 0.01)
     curr_soc = 0.0
+    charge_limited_capacity = 0
+    charge_limited_power = 0
+    hours_full = 0
+    days_full = set()
+    days_empty = set()
     
     for i in range(n):
         h = hours[i]
@@ -56,7 +61,15 @@ def run_sim_vectorized(df, cap_mwh, p_mw, eff):
         if not is_discharge:
             # Charge Logic: Recover curtailed energy
             room_mwh = max(0.0, cap_mwh - curr_soc)
+            # Battery already full
+            if room_mwh <= 1e-6 and curt[i] > 0:
+                charge_limited_capacity += 1
+                hours_full += 1
+                days_full.add(df["TimeStamp"].iloc[i].date())
             p_in = min(curt[i], p_mw, (room_mwh / safe_eff) / dt)
+            # Curtailment exceeds battery power rating
+            if curt[i] > p_mw:
+                charge_limited_power += 1
             if p_in > 0:
                 bess_p[i] = -p_in
                 curr_soc += p_in * dt * safe_eff
@@ -69,8 +82,19 @@ def run_sim_vectorized(df, cap_mwh, p_mw, eff):
                 curr_soc -= (p_out / safe_eff) * dt
         
         soc[i] = curr_soc
+        # Record days ending empty
+        if h == 23 and m == 59 and curr_soc < 1e-3:
+            days_empty.add(df["TimeStamp"].iloc[i].date())
 
-    return bess_p, soc
+    return (
+    bess_p,
+    soc,
+    charge_limited_capacity,
+    charge_limited_power,
+    hours_full,
+    len(days_full),
+    len(days_empty),
+)
 
 st.markdown('<div class="main-header">🔋 BESS Energy Recovery: Annual Profile</div>', unsafe_allow_html=True)
 
@@ -84,7 +108,15 @@ input_file = '/content/Energy-Working.xlsx' if os.path.exists('/content/Energy-W
 
 if os.path.exists(input_file):
     data = load_and_preprocess(input_file)
-    bp, sc = run_sim_vectorized(data, cap, pwr, eff)
+    (
+    bp,
+    sc,
+    charge_limited_capacity,
+    charge_limited_power,
+    hours_full,
+    days_full,
+    days_empty,
+) = run_sim_vectorized(data, cap, pwr, eff)
     
     #data['BESS_MW'] = bp
     #data['SOC_MWh'] = sc
@@ -95,11 +127,101 @@ if os.path.exists(input_file):
     
     #recovered_gwh = (data[data['BESS_MW'] > 0]['BESS_MW'].sum() / 60) / 1000
     recovered_gwh = (bp[bp > 0].sum() / 60) / 1000
+    # Total annual curtailed energy
+    curtailed_gwh = (data["Curtailed Energy"].sum() / 60) / 1000
     
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Annual Recovered", f"{recovered_gwh:.3f} GWh")
-    c2.metric("Peak SOC", f"{soc_percent.max():.1f}%")
-    c3.metric("Daily Cycles", "365")
+    # Recovery %
+    recovery_percent = (
+        recovered_gwh / curtailed_gwh * 100
+        if curtailed_gwh > 0 else 0
+    )
+    
+    # Remaining curtailed energy
+    remaining_gwh = curtailed_gwh - recovered_gwh
+    
+    # Annual throughput
+    annual_throughput = (np.abs(bp).sum() / 60) / 1000
+    
+    # Equivalent full cycles
+    equivalent_cycles = (
+        (bp[bp > 0].sum() / 60) / cap
+        if cap > 0 else 0
+    )
+    
+    # Average SOC
+    average_soc = soc_percent.mean()
+    
+    # Hours battery stayed full
+    hours_at_full = hours_full / 60
+    
+    # Percentage of days battery became full
+    days_full_percent = days_full / 365 * 100
+    
+    # Percentage of days battery finished empty
+    days_empty_percent = days_empty / 365 * 100
+    
+    c1,c2,c3,c4 = st.columns(4)
+
+    c1.metric(
+        "Recovered Energy",
+        f"{recovered_gwh:.2f} GWh"
+    )
+    
+    c2.metric(
+        "Recovery",
+        f"{recovery_percent:.1f}%"
+    )
+    
+    c3.metric(
+        "Remaining Curtailment",
+        f"{remaining_gwh:.2f} GWh"
+    )
+    
+    c4.metric(
+        "Equivalent Cycles",
+        f"{equivalent_cycles:.0f}/yr"
+    )
+    c5,c6,c7,c8 = st.columns(4)
+    
+    c5.metric(
+        "Peak SOC",
+        f"{soc_percent.max():.1f}%"
+    )
+    
+    c6.metric(
+        "Average SOC",
+        f"{average_soc:.1f}%"
+    )
+    
+    c7.metric(
+        "Annual Throughput",
+        f"{annual_throughput:.2f} GWh"
+    )
+    
+    c8.metric(
+        "Days SOC Hit 100%",
+        f"{days_full_percent:.1f}%"
+    )
+    c9,c10,c11,12 = st.columns(4)
+
+    c9.metric(
+        "Days Ending Empty",
+        f"{days_empty_percent:.1f}%"
+    )
+    
+    c10.metric(
+        "Hours at Full SOC",
+        f"{hours_at_full:.1f}"
+    )
+    
+    c11.metric(
+        "Charge Limited",
+        f"{charge_limited_capacity/60:.1f} hrs"
+    )
+    c12.metric(
+    "Power Limited",
+    f"{charge_limited_power/60:.1f} hrs"
+    )
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=data['TimeStamp'], y=final_grid, name="Grid Export", line=dict(color='#2ca02c', width=1)))
