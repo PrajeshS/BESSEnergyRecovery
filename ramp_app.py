@@ -233,7 +233,7 @@ if os.path.exists(input_file):
     )
 
     fig = go.Figure()
-    fig.add_trace(go.Scattegl(
+    fig.add_trace(go.Scattergl(
     x=timestamps,
     y=e_grid,
     name="E_Grid",
