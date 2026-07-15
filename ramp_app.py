@@ -22,7 +22,7 @@ def load_and_preprocess(file_path):
     # 2. Ensure target columns are strictly numeric
     for col in ['E_Grid (MW)', 'Curtailed Energy']:
         if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
+            df[col] = (pd.to_numeric(df[col], errors="coerce").fillna(0.0).astype(np.float32))
         else:
             df[col] = 0.0
             
@@ -39,8 +39,8 @@ def run_sim_vectorized(df, cap_mwh, p_mw, eff):
     hours = df['TimeStamp'].dt.hour.values
     minutes = df['TimeStamp'].dt.minute.values
     
-    bess_p = np.zeros(n)
-    soc = np.zeros(n)
+    bess_p = np.zeros(n, dtype=np.float32)
+    soc = np.zeros(n, dtype=np.float32)
     safe_eff = max(eff, 0.01)
     curr_soc = 0.0
     
@@ -86,12 +86,15 @@ if os.path.exists(input_file):
     data = load_and_preprocess(input_file)
     bp, sc = run_sim_vectorized(data, cap, pwr, eff)
     
-    data['BESS_MW'] = bp
-    data['SOC_MWh'] = sc
-    data['SOC_%'] = (data['SOC_MWh'] / cap) * 100 if cap > 0 else 0
-    data['Final_Grid_MW'] = data['E_Grid (MW)'] + np.where(bp > 0, bp, 0)
+    #data['BESS_MW'] = bp
+    #data['SOC_MWh'] = sc
+    #data['SOC_%'] = (data['SOC_MWh'] / cap) * 100 if cap > 0 else 0
+    #data['Final_Grid_MW'] = data['E_Grid (MW)'] + np.where(bp > 0, bp, 0)
+    final_grid = data["E_Grid (MW)"].to_numpy() + np.where(bp > 0, bp, 0)
+    soc_percent = (sc / cap) * 100
     
-    recovered_gwh = (data[data['BESS_MW'] > 0]['BESS_MW'].sum() / 60) / 1000
+    #recovered_gwh = (data[data['BESS_MW'] > 0]['BESS_MW'].sum() / 60) / 1000
+    recovered_gwh = (bp[bp > 0].sum() / 60) / 1000
     
     c1, c2, c3 = st.columns(3)
     c1.metric("Annual Recovered", f"{recovered_gwh:.3f} GWh")
@@ -99,8 +102,8 @@ if os.path.exists(input_file):
     c3.metric("Daily Cycles", "365")
 
     fig = go.Figure()
-    fig.add_trace(go.Scattergl(x=data['TimeStamp'], y=data['Final_Grid_MW'], name="Grid Export", line=dict(color='#2ca02c', width=1)))
-    fig.add_trace(go.Scattergl(x=data['TimeStamp'],y=data['SOC_%'],name="BESS SOC",yaxis="y2",line=dict(color='#00d4ff', width=1.5)))
+    fig.add_trace(go.Scattergl(x=data['TimeStamp'], y=final_grid, name="Grid Export", line=dict(color='#2ca02c', width=1)))
+    fig.add_trace(go.Scattergl(x=data['TimeStamp'],y=data[soc_percent],name="BESS SOC",yaxis="y2",line=dict(color='#00d4ff', width=1.5)))
     
     fig.update_layout(
         template="plotly_dark", height=600, hovermode="closest",
