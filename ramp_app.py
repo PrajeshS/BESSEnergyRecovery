@@ -36,8 +36,8 @@ def run_sim_vectorized(df, cap_mwh, p_mw, eff):
     dt = 1/60
     n = len(df)
     curt = df['Curtailed Energy'].to_numpy(dtype=np.float32)
-    hours = df['TimeStamp'].to_numpy(dtype=np.float32)
-    minutes = df['TimeStamp'].to_numpy(dtype=np.float32)
+    hours = df['TimeStamp'].dt.hour.to_numpy(dtype=np.int16)
+    minutes = df['TimeStamp'].dt.hour.to_numpy(dtype=np.int16)
     dates = df["TimeStamp"].dt.date.to_numpy()
     bess_p = np.zeros(n, dtype=np.float32)
     soc = np.zeros(n, dtype=np.float32)
@@ -74,7 +74,7 @@ def run_sim_vectorized(df, cap_mwh, p_mw, eff):
             
                 if curt[i] > 0:
                     charge_limited_capacity += 1
-                        p_in = min(curt[i], p_mw, (room_mwh / safe_eff) / dt)
+            p_in = min(curt[i], p_mw, (room_mwh / safe_eff) / dt)
             # Curtailment exceeds battery power rating
             if room_mwh > 1e-6 and curt[i] > p_mw:
                 charge_limited_power += 1
@@ -159,7 +159,7 @@ if os.path.exists(input_file):
     
     # Equivalent full cycles
     equivalent_cycles = (
-    (annual_throughput) / (2 * cap)
+    (annual_throughput*1000) / (2 * cap)
     if cap > 0 else 0
     )
     
