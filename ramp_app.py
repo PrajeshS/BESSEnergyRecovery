@@ -35,10 +35,10 @@ def load_and_preprocess(file_path):
 def run_sim_vectorized(df, cap_mwh, p_mw, eff):
     dt = 1/60
     n = len(df)
-    curt = df['Curtailed Energy'].values
-    hours = df['TimeStamp'].dt.hour.values
-    minutes = df['TimeStamp'].dt.minute.values
-    
+    curt = df['Curtailed Energy'].to_numpy(dtype=np.float32)
+    hours = df['TimeStamp'].to_numpy(dtype=np.float32)
+    minutes = df['TimeStamp'].to_numpy(dtype=np.float32)
+    dates = df["TimeStamp"].dt.date.to_numpy()
     bess_p = np.zeros(n, dtype=np.float32)
     soc = np.zeros(n, dtype=np.float32)
     safe_eff = max(eff, 0.01)
@@ -61,24 +61,27 @@ def run_sim_vectorized(df, cap_mwh, p_mw, eff):
         # Reset at Midnight (00:00) per philosophy
         if h == 0 and m == 0: curr_soc = 0.0
         
-        current_hour = h + m/60
+        current_hour = h + m/60.0
         is_discharge = (discharge_start <= current_hour < discharge_end)
         
         if not is_discharge:
             # Charge Logic: Recover curtailed energy
             room_mwh = max(0.0, cap_mwh - curr_soc)
-            # Battery already full
-            if room_mwh <= 1e-6 and curt[i] > 0:
-                charge_limited_capacity += 1
+            # Battery is full
+            if room_mwh <= 1e-6:
                 hours_full += 1
-                days_full.add(df["TimeStamp"].iloc[i].date())
-            p_in = min(curt[i], p_mw, (room_mwh / safe_eff) / dt)
+                days_full.add(dates[i])
+            
+                if curt[i] > 0:
+                    charge_limited_capacity += 1
+                        p_in = min(curt[i], p_mw, (room_mwh / safe_eff) / dt)
             # Curtailment exceeds battery power rating
-            if curt[i] > p_mw:
+            if room_mwh > 1e-6 and curt[i] > p_mw:
                 charge_limited_power += 1
             if p_in > 0:
                 bess_p[i] = -p_in
                 curr_soc += p_in * dt * safe_eff
+                curr_soc = min(curr_soc, cap_mwh)
         else:
             # Discharge Logic: starts at 7 PM, duration = Energy / Power
             avail_mwh = curr_soc * safe_eff
@@ -86,11 +89,12 @@ def run_sim_vectorized(df, cap_mwh, p_mw, eff):
             if p_out > 0:
                 bess_p[i] = p_out
                 curr_soc -= (p_out / safe_eff) * dt
+                curr_soc = max(curr_soc, 0.0)
         
         soc[i] = curr_soc
         # Record days ending empty
         if h == 23 and m == 59 and curr_soc < 1e-3:
-            days_empty.add(df["TimeStamp"].iloc[i].date())
+            days_empty.add(dates[i])
 
     return (
     bess_p,
@@ -130,9 +134,11 @@ if os.path.exists(input_file):
     #data['SOC_MWh'] = sc
     #data['SOC_%'] = (data['SOC_MWh'] / cap) * 100 if cap > 0 else 0
     #data['Final_Grid_MW'] = data['E_Grid (MW)'] + np.where(bp > 0, bp, 0)
-    e_grid = data["E_Grid (MW)"].to_numpy()
-    modified_grid = data["Modified_E_Grid_v2"].to_numpy()
-    soc_percent = (sc / cap) * 100
+    soc_percent = (
+    (sc / cap) * 100
+    if cap > 0
+    else np.zeros_like(sc)
+    )
     
     #recovered_gwh = (data[data['BESS_MW'] > 0]['BESS_MW'].sum() / 60) / 1000
     recovered_gwh = (bp[bp > 0].sum() / 60) / 1000
@@ -153,8 +159,8 @@ if os.path.exists(input_file):
     
     # Equivalent full cycles
     equivalent_cycles = (
-        (bp[bp > 0].sum() / 60) / cap
-        if cap > 0 else 0
+    (annual_throughput) / (2 * cap)
+    if cap > 0 else 0
     )
     
     # Average SOC
