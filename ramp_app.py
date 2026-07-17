@@ -37,7 +37,7 @@ def run_sim_vectorized(df, cap_mwh, p_mw, eff):
     n = len(df)
     curt = df['Curtailed Energy'].to_numpy(dtype=np.float32)
     hours = df['TimeStamp'].dt.hour.to_numpy(dtype=np.int16)
-    minutes = df['TimeStamp'].dt.hour.to_numpy(dtype=np.int16)
+    minutes = df['TimeStamp'].dt.minute.to_numpy(dtype=np.int16)
     dates = df["TimeStamp"].dt.date.to_numpy()
     bess_p = np.zeros(n, dtype=np.float32)
     soc = np.zeros(n, dtype=np.float32)
@@ -194,7 +194,7 @@ if os.path.exists(input_file):
     
     c4.metric(
         "Equivalent Cycles",
-        f"{equivalent_cycles:.0f}/yr"
+        f"{equivalent_cycles:.1f}/yr"
     )
     c5,c6,c7,c8 = st.columns(4)
     
